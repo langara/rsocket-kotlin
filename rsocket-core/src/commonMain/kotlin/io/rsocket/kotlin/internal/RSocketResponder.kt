@@ -43,7 +43,7 @@ internal class RSocketResponder(
         launchCancelable(streamId) {
             val response = requestOrThrow(streamId) {
                 requestHandler.requestResponse(frame.payload)
-            }
+            } ?: return@launchCancelable
             if (isActive) send(NextCompletePayloadFrame(streamId, response))
         }
     }
@@ -53,7 +53,7 @@ internal class RSocketResponder(
         launchCancelable(streamId) {
             val response = requestOrThrow(streamId) {
                 requestHandler.requestStream(initFrame.payload)
-            }
+            } ?: return@launchCancelable
             response.collectLimiting(
                 streamId,
                 RequestStreamResponderFlowCollector(state, streamId, initFrame.initialRequest)
@@ -70,7 +70,7 @@ internal class RSocketResponder(
         launchCancelable(streamId) {
             val response = requestOrThrow(streamId) {
                 requestHandler.requestChannel(request)
-            }
+            } ?: return@launchCancelable
             response.collectLimiting(
                 streamId,
                 RequestStreamResponderFlowCollector(state, streamId, initFrame.initialRequest)
@@ -80,12 +80,13 @@ internal class RSocketResponder(
         }
     }
 
-    private inline fun <T> CoroutineScope.requestOrThrow(streamId: Int, block: () -> T): T {
+    private inline fun <T : Any> CoroutineScope.requestOrThrow(streamId: Int, block: () -> T): T? {
         return try {
             block()
         } catch (e: Throwable) {
             if (isActive) state.send(ErrorFrame(streamId, e))
-            throw e
+            cancel("Request handling failed", e)
+            null
         }
     }
 

@@ -14,26 +14,6 @@
  * limitations under the License.
  */
 
-package tcp
-
-import doSomething
-import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
-import io.ktor.util.*
-import io.rsocket.kotlin.connection.*
 import kotlinx.coroutines.*
-import java.util.concurrent.*
 
-@OptIn(KtorExperimentalAPI::class)
-fun main(): Unit = runBlocking {
-    val dispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
-    val socket = aSocket(ActorSelectorManager(dispatcher)).tcp().connect("127.0.0.1", 2323)
-
-    val client = socket.connection.connectClient()
-    try {
-        client.doSomething()
-    } catch (e: Throwable) {
-        dispatcher.close()
-        throw e
-    }
-}
+suspend fun main(): Unit = runTcpClient(Dispatchers.IO)

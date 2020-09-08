@@ -14,29 +14,6 @@
  * limitations under the License.
  */
 
-plugins {
-    kotlin("multiplatform")
+import io.ktor.client.engine.cio.*
 
-    id("maven-publish")
-    id("com.jfrog.bintray")
-    id("com.jfrog.artifactory")
-}
-
-kotlin {
-    jvm()
-    js()
-    linuxX64("native")
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":rsocket-core"))
-            }
-        }
-        val commonTest by getting {
-            dependencies {
-                implementation(project(":rsocket-transport-test"))
-            }
-        }
-    }
-}
+suspend fun main(): Unit = runWSClient(CIO)

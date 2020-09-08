@@ -14,29 +14,19 @@
  * limitations under the License.
  */
 
-plugins {
-    kotlin("multiplatform")
+import io.ktor.application.*
+import io.ktor.routing.*
+import io.ktor.server.cio.*
+import io.ktor.server.engine.*
+import io.ktor.util.*
+import io.rsocket.kotlin.core.*
 
-    id("maven-publish")
-    id("com.jfrog.bintray")
-    id("com.jfrog.artifactory")
-}
-
-kotlin {
-    jvm()
-    js()
-    linuxX64("native")
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":rsocket-core"))
-            }
+@OptIn(KtorExperimentalAPI::class)
+fun main() {
+    embeddedServer(CIO) {
+        install(RSocketServerSupport)
+        routing {
+            rSocket(acceptor = rSocketAcceptor)
         }
-        val commonTest by getting {
-            dependencies {
-                implementation(project(":rsocket-transport-test"))
-            }
-        }
-    }
+    }.start(true)
 }

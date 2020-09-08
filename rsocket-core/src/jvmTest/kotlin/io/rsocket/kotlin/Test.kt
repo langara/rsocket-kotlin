@@ -16,6 +16,7 @@
 
 package io.rsocket.kotlin
 
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.*
 import kotlin.time.*
 
@@ -25,3 +26,14 @@ actual fun test(timeout: Duration?, block: suspend CoroutineScope.() -> Unit): U
         else -> withTimeout(timeout) { block() }
     }
 }
+
+actual class TestPacketStore {
+    private val _stored = mutableListOf<ByteReadPacket>()
+    actual val stored: List<ByteReadPacket> get() = _stored
+
+    actual fun store(packet: ByteReadPacket) {
+        _stored += packet
+    }
+}
+
+actual val platform: String get() = "JVM"

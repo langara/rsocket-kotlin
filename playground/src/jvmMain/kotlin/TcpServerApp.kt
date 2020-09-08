@@ -14,14 +14,6 @@
  * limitations under the License.
  */
 
-package ws
+import kotlinx.coroutines.*
 
-import io.ktor.client.engine.*
-import io.ktor.client.engine.cio.*
-import io.ktor.util.*
-
-@OptIn(KtorExperimentalAPI::class)
-actual val engine: HttpClientEngineFactory<*> = CIO
-
-suspend fun main() = run()
-
+suspend fun main(): Unit = runTcpServer(Dispatchers.IO)

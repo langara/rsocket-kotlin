@@ -14,29 +14,15 @@
  * limitations under the License.
  */
 
-plugins {
-    kotlin("multiplatform")
+package io.rsocket.kotlin
 
-    id("maven-publish")
-    id("com.jfrog.bintray")
-    id("com.jfrog.artifactory")
-}
+import kotlinx.coroutines.*
+import kotlin.time.*
 
-kotlin {
-    jvm()
-    js()
-    linuxX64("native")
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":rsocket-core"))
-            }
-        }
-        val commonTest by getting {
-            dependencies {
-                implementation(project(":rsocket-transport-test"))
-            }
-        }
+@OptIn(ExperimentalTime::class)
+actual fun test(timeout: Duration?, block: suspend CoroutineScope.() -> Unit): Unit = runBlocking {
+    when (timeout) {
+        null -> block()
+        else -> withTimeout(timeout) { block() }
     }
 }

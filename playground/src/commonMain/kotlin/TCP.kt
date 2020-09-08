@@ -14,24 +14,27 @@
  * limitations under the License.
  */
 
-package ws
-
-import doSomething
-import io.ktor.client.*
-import io.ktor.client.engine.*
-import io.ktor.client.features.websocket.*
+import io.ktor.network.selector.*
+import io.ktor.network.sockets.*
 import io.ktor.util.*
+import io.rsocket.kotlin.connection.*
 import io.rsocket.kotlin.core.*
+import kotlin.coroutines.*
 
-expect val engine: HttpClientEngineFactory<*>
+@OptIn(KtorExperimentalAPI::class, InternalAPI::class)
+suspend fun runTcpClient(dispatcher: CoroutineContext): Unit {
+    aSocket(SelectorManager(dispatcher))
+        .tcp()
+        .connect("127.0.0.1", 2323)
+        .connection
+        .connectClient()
+        .doSomething()
+}
 
-@OptIn(KtorExperimentalAPI::class)
-suspend fun run() {
-    val client = HttpClient(engine) {
-        install(WebSockets)
-        install(RSocketClientSupport)
-    }
-
-    val rSocket = client.rSocket()
-    rSocket.doSomething()
+@OptIn(KtorExperimentalAPI::class, InternalAPI::class)
+suspend fun runTcpServer(dispatcher: CoroutineContext): Unit {
+    aSocket(SelectorManager(dispatcher))
+        .tcp()
+        .bind("127.0.0.1", 2323)
+        .rSocket(acceptor = rSocketAcceptor)
 }

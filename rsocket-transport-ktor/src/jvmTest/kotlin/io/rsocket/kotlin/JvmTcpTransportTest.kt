@@ -14,20 +14,8 @@
  * limitations under the License.
  */
 
-package tcp
+package io.rsocket.kotlin
 
-import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
-import io.ktor.util.*
-import io.rsocket.kotlin.core.*
 import kotlinx.coroutines.*
-import rSocketAcceptor
-import java.util.concurrent.*
 
-@OptIn(KtorExperimentalAPI::class)
-fun main(): Unit = runBlocking {
-    val dispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
-    val server = aSocket(ActorSelectorManager(dispatcher)).tcp().bind("127.0.0.1", 2323)
-
-    server.rSocket(acceptor = rSocketAcceptor)
-}
+class JvmTcpTransportTest : TcpTransportTest(Dispatchers.IO)

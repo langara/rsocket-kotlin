@@ -16,7 +16,17 @@
 
 package io.rsocket.kotlin
 
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.*
 import kotlin.time.*
 
 expect fun test(timeout: Duration? = 10.seconds, block: suspend CoroutineScope.() -> Unit)
+
+expect class TestPacketStore() {
+    val stored: List<ByteReadPacket>
+    fun store(packet: ByteReadPacket)
+}
+
+expect val platform: String
+
+val isNative: Boolean get() = platform == "NATIVE"

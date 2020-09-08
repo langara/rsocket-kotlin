@@ -26,18 +26,25 @@ plugins {
 kotlin {
     jvm()
     js()
+    linuxX64("native")
 
     sourceSets {
         val commonMain by getting {
             dependencies {
                 api("io.ktor:ktor-io:1.4.0")
-                api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
+                api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9-native-mt")
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation("io.ktor:ktor-utils:1.4.0")
                 implementation(project(":rsocket-transport-local"))
+            }
+        }
+        val nativeMain by getting {
+            dependencies {
+                //synchronized collections implementation
+                api("co.touchlab:stately-iso-collections:1.1.0-a1")
             }
         }
     }

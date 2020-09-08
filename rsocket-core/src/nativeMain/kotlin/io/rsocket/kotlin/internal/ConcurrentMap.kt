@@ -14,29 +14,8 @@
  * limitations under the License.
  */
 
-plugins {
-    kotlin("multiplatform")
+package io.rsocket.kotlin.internal
 
-    id("maven-publish")
-    id("com.jfrog.bintray")
-    id("com.jfrog.artifactory")
-}
+import co.touchlab.stately.collections.*
 
-kotlin {
-    jvm()
-    js()
-    linuxX64("native")
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":rsocket-core"))
-            }
-        }
-        val commonTest by getting {
-            dependencies {
-                implementation(project(":rsocket-transport-test"))
-            }
-        }
-    }
-}
+internal actual fun <V> concurrentMap(): MutableMap<Int, V> = sharedMutableMapOf()

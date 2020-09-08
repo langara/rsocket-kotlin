@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 
-package ws
-
+import io.ktor.client.*
 import io.ktor.client.engine.*
-import io.ktor.client.engine.js.*
+import io.ktor.client.features.websocket.*
+import io.ktor.util.*
+import io.rsocket.kotlin.core.*
 
-actual val engine: HttpClientEngineFactory<*> = Js
+@OptIn(KtorExperimentalAPI::class)
+suspend fun runWSClient(engine: HttpClientEngineFactory<*>) {
+    val client = HttpClient(engine) {
+        install(WebSockets)
+        install(RSocketClientSupport)
+    }
 
-suspend fun main() = run()
+    val rSocket = client.rSocket()
+    rSocket.doSomething()
+}

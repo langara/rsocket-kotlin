@@ -14,29 +14,10 @@
  * limitations under the License.
  */
 
-plugins {
-    kotlin("multiplatform")
+package io.rsocket.kotlin
 
-    id("maven-publish")
-    id("com.jfrog.bintray")
-    id("com.jfrog.artifactory")
-}
+import io.ktor.util.network.*
+import kotlin.coroutines.*
+import kotlin.random.*
 
-kotlin {
-    jvm()
-    js()
-    linuxX64("native")
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":rsocket-core"))
-            }
-        }
-        val commonTest by getting {
-            dependencies {
-                implementation(project(":rsocket-transport-test"))
-            }
-        }
-    }
-}
+class NativeTcpTransportTest : TcpTransportTest(EmptyCoroutineContext, { NetworkAddress("127.0.0.1", 8000 + Random.nextInt(200)) })

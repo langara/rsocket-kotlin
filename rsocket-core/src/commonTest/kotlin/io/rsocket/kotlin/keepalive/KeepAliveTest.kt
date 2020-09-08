@@ -49,7 +49,7 @@ class KeepAliveTest {
     @Test
     fun rSocketNotCanceledOnPresentKeepAliveTicks() = test {
         val rSocket = requester()
-        launch(connection.job) {
+        val job = launch(connection.job) {
             while (isActive) {
                 delay(100.milliseconds)
                 connection.sendToReceiver(KeepAliveFrame(true, 0, ByteReadPacket.Empty))
@@ -57,12 +57,13 @@ class KeepAliveTest {
         }
         delay(1.5.seconds)
         assertTrue(rSocket.isActive)
+        job.cancel() //needed for K/N
     }
 
     @Test
     fun requesterRespondsToKeepAlive() = test {
         requester(KeepAlive(100.seconds, 100.seconds))
-        launch(connection.job) {
+        val job = launch(connection.job) {
             while (isActive) {
                 delay(100.milliseconds)
                 connection.sendToReceiver(KeepAliveFrame(true, 0, ByteReadPacket.Empty))
@@ -75,6 +76,7 @@ class KeepAliveTest {
             assertTrue(it is KeepAliveFrame)
             assertFalse(it.respond)
         }
+        job.cancel() //needed for K/N
     }
 
     @Test

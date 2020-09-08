@@ -17,10 +17,11 @@
 package io.rsocket.kotlin
 
 import io.ktor.utils.io.core.*
+import kotlinx.atomicfu.*
 import kotlinx.coroutines.*
 import kotlin.time.*
 
-actual fun test(timeout: Duration?, block: suspend CoroutineScope.() -> Unit): dynamic = GlobalScope.promise {
+actual fun test(timeout: Duration?, block: suspend CoroutineScope.() -> Unit): Unit = runBlocking {
     when (timeout) {
         null -> block()
         else -> withTimeout(timeout) { block() }
@@ -28,12 +29,21 @@ actual fun test(timeout: Duration?, block: suspend CoroutineScope.() -> Unit): d
 }
 
 actual class TestPacketStore {
-    private val _stored = mutableListOf<ByteReadPacket>()
-    actual val stored: List<ByteReadPacket> get() = _stored
+
+    private val sentIndex = atomic(0)
+    private val sent = atomicArrayOfNulls<ByteReadPacket>(50)
+    actual val stored: List<ByteReadPacket>
+        get() = buildList {
+            repeat(sentIndex.value) {
+                val value = sent[it].value!!
+                add(value)
+            }
+        }
 
     actual fun store(packet: ByteReadPacket) {
-        _stored += packet
+        sent[sentIndex.value].value = packet
+        sentIndex.incrementAndGet()
     }
 }
 
-actual val platform: String get() = "JS"
+actual val platform: String get() = "NATIVE"

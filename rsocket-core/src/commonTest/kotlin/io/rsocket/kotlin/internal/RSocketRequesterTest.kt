@@ -126,6 +126,7 @@ class RSocketRequesterTest {
 
     @Test
     fun testChannelRequestServerSideCancellation() = test {
+        if (isNative) return@test // channelFlow doesn't work on K/N because of https://github.com/Kotlin/kotlinx.coroutines/issues/2151
         var ch: SendChannel<Payload>? = null
         val request = channelFlow<Payload> {
             ch = this

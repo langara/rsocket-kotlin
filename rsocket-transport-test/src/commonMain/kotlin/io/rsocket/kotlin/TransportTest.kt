@@ -26,7 +26,7 @@ import kotlin.test.*
 import kotlin.time.*
 
 @OptIn(ExperimentalTime::class)
-abstract class TransportTest(private val timeout: Duration = 10.minutes) {
+abstract class TransportTest(private val timeout: Duration = 20.minutes) {
     private var client: RSocket? = null
 
     abstract suspend fun init(): RSocket
@@ -37,7 +37,7 @@ abstract class TransportTest(private val timeout: Duration = 10.minutes) {
     }
 
     @AfterTest
-    fun clean() = test {
+    open fun clean() = test {
         client().job.cancelAndJoin()
     }
 
@@ -66,13 +66,13 @@ abstract class TransportTest(private val timeout: Duration = 10.minutes) {
     @Test
     fun metadataPush10() = test(timeout) {
         val client = client()
-        (1..10).map { async { client.metadataPush(ByteReadPacket(MOCK_DATA.encodeToByteArray())) } }.awaitAll()
+        (1..10).map { async { client.metadataPush(packet(MOCK_DATA)) } }.awaitAll()
     }
 
     @Test
     fun largePayloadMetadataPush10() = test(timeout) {
         val client = client()
-        (1..10).map { async { client.metadataPush(ByteReadPacket(LARGE_DATA.encodeToByteArray())) } }.awaitAll()
+        (1..10).map { async { client.metadataPush(packet(LARGE_DATA)) } }.awaitAll()
     }
 
     @Test
@@ -242,3 +242,5 @@ class TestRSocket : RSocket {
         const val metadata = "metadata"
     }
 }
+
+private fun packet(text: String): ByteReadPacket = buildPacket { writeText(text) }
