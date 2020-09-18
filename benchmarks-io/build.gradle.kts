@@ -27,6 +27,9 @@ kotlin {
     }
     linuxX64("native") {
         binaries.executable()
+        compilations.all {
+            kotlinOptions.freeCompilerArgs += "-Xallocator=mimalloc"
+        }
     }
 
     sourceSets {
