@@ -22,7 +22,7 @@ import io.rsocket.kotlin.payload.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-class TestRSocket : RSocket {
+class TestRSocket : RSocketResponder {
     override val job: Job = Job()
 
     override suspend fun metadataPush(metadata: ByteReadPacket): Unit = metadata.release()
@@ -34,11 +34,12 @@ class TestRSocket : RSocket {
         return Payload(packet(data), packet(metadata))
     }
 
-    override fun requestStream(payload: Payload): Flow<Payload> = flow {
+    override suspend fun requestStream(payload: Payload): Flow<Payload> = flow {
         repeat(10000) { emit(requestResponse(payload)) }
     }
 
-    override fun requestChannel(payloads: Flow<Payload>): Flow<Payload> = flow {
+    override suspend fun requestChannel(initPayload: Payload, payloads: ReactiveFlow<Payload>): Flow<Payload> = flow {
+        emit(initPayload)
         payloads.collect { emit(it) }
     }
 

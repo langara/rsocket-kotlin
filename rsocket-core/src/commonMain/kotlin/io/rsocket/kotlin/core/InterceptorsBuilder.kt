@@ -20,16 +20,16 @@ package io.rsocket.kotlin.core
 import io.rsocket.kotlin.*
 
 public class InterceptorsBuilder internal constructor() {
-    private val requesters = mutableListOf<Interceptor<RSocket>>()
-    private val responders = mutableListOf<Interceptor<RSocket>>()
+    private val requesters = mutableListOf<Interceptor<RSocketRequester>>()
+    private val responders = mutableListOf<Interceptor<RSocketResponder>>()
     private val connections = mutableListOf<Interceptor<Connection>>()
     private val acceptors = mutableListOf<Interceptor<ConnectionAcceptor>>()
 
-    public fun forRequester(interceptor: Interceptor<RSocket>) {
+    public fun forRequester(interceptor: Interceptor<RSocketRequester>) {
         requesters += interceptor
     }
 
-    public fun forResponder(interceptor: Interceptor<RSocket>) {
+    public fun forResponder(interceptor: Interceptor<RSocketResponder>) {
         responders += interceptor
     }
 
@@ -46,13 +46,13 @@ public class InterceptorsBuilder internal constructor() {
 }
 
 internal class Interceptors(
-    private val requesters: List<Interceptor<RSocket>>,
-    private val responders: List<Interceptor<RSocket>>,
+    private val requesters: List<Interceptor<RSocketRequester>>,
+    private val responders: List<Interceptor<RSocketResponder>>,
     private val connections: List<Interceptor<Connection>>,
     private val acceptors: List<Interceptor<ConnectionAcceptor>>,
 ) {
-    fun wrapRequester(requester: RSocket): RSocket = requesters.fold(requester) { r, i -> i.intercept(r) }
-    fun wrapResponder(responder: RSocket): RSocket = responders.fold(responder) { r, i -> i.intercept(r) }
+    fun wrapRequester(requester: RSocketRequester): RSocketRequester = requesters.fold(requester) { r, i -> i.intercept(r) }
+    fun wrapResponder(responder: RSocketResponder): RSocketResponder = responders.fold(responder) { r, i -> i.intercept(r) }
     fun wrapConnection(connection: Connection): Connection = connections.fold(connection) { c, i -> i.intercept(c) }
     fun wrapAcceptor(connection: ConnectionAcceptor): ConnectionAcceptor = acceptors.fold(connection) { c, i -> i.intercept(c) }
 }

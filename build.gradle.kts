@@ -221,6 +221,7 @@ subprojects {
 
                         useExperimentalAnnotation("io.rsocket.kotlin.TransportApi")
                         useExperimentalAnnotation("io.rsocket.kotlin.ExperimentalMetadataApi")
+                        useExperimentalAnnotation("io.rsocket.kotlin.ExperimentalStreamsApi")
                     }
                 }
             }

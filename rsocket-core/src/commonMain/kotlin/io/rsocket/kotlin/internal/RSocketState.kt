@@ -27,12 +27,13 @@ import kotlinx.coroutines.flow.*
 
 @OptIn(
     InternalCoroutinesApi::class,
-    ExperimentalCoroutinesApi::class,
-    TransportApi::class
+    TransportApi::class,
+    ExperimentalStreamsApi::class
 )
 internal class RSocketState(
     private val connection: Connection,
     keepAlive: KeepAlive,
+    val defaultRequestStrategy: () -> RequestStrategy
 ) : Cancelable by connection {
     private val prioritizer = Prioritizer()
     private val requestScope = CoroutineScope(SupervisorJob(job))
@@ -52,9 +53,8 @@ internal class RSocketState(
         prioritizer.sendPrioritized(frame)
     }
 
-    fun createReceiverFor(streamId: Int, initFrame: RequestFrame? = null): ReceiveChannel<RequestFrame> {
+    fun createReceiverFor(streamId: Int): ReceiveChannel<RequestFrame> {
         val receiver = Channel<RequestFrame>(Channel.UNLIMITED)
-        initFrame?.let(receiver::offer) //used only in RequestChannel on responder side
         receivers[streamId] = receiver
         return receiver
     }
@@ -74,6 +74,21 @@ internal class RSocketState(
                     close(cause)
                 }
             }
+        }
+    }
+
+    suspend fun collectStream(
+        streamId: Int,
+        receiver: ReceiveChannel<RequestFrame>,
+        strategy: RequestStrategy,
+        collector: FlowCollector<Payload>,
+    ): Unit = consumeReceiverFor(streamId) {
+        //TODO fragmentation
+        for (frame in receiver) {
+            if (frame.complete) return //TODO check next flag
+            collector.emit(frame.payload)
+            val next = strategy.nextRequest()
+            if (next > 0) send(RequestNFrame(streamId, next))
         }
     }
 
@@ -101,9 +116,9 @@ internal class RSocketState(
         return job
     }
 
-    private fun handleFrame(responder: RSocketResponder, frame: Frame) {
+    private fun handleFrame(responder: RSocketResponderImpl, frame: Frame) {
         when (val streamId = frame.streamId) {
-            0 -> when (frame) {
+            0    -> when (frame) {
                 is ErrorFrame        -> {
                     cancel("Zero stream error", frame.throwable)
                     frame.release() //TODO
@@ -122,15 +137,15 @@ internal class RSocketState(
             }
             else -> when (frame) {
                 is RequestNFrame -> limits[streamId]?.updateRequests(frame.requestN)
-                is CancelFrame -> senders.remove(streamId)?.cancel()
-                is ErrorFrame -> {
+                is CancelFrame   -> senders.remove(streamId)?.cancel()
+                is ErrorFrame    -> {
                     receivers.remove(streamId)?.apply {
                         closeReceivedElements()
                         close(frame.throwable)
                     }
                     frame.release()
                 }
-                is RequestFrame -> when (frame.type) {
+                is RequestFrame  -> when (frame.type) {
                     FrameType.Payload         -> receivers[streamId]?.offer(frame)
                     FrameType.RequestFnF      -> responder.handleFireAndForget(frame)
                     FrameType.RequestResponse -> responder.handlerRequestResponse(frame)
@@ -146,8 +161,8 @@ internal class RSocketState(
         }
     }
 
-    fun start(requestHandler: RSocket) {
-        val responder = RSocketResponder(this, requestHandler)
+    fun start(requestHandler: RSocketResponder) {
+        val responder = RSocketResponderImpl(this, requestHandler)
         keepAliveHandler.startIn(scope)
         requestHandler.job.invokeOnCompletion { cancel("Request handled stopped", it) }
         job.invokeOnCompletion { error ->

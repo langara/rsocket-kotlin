@@ -19,16 +19,17 @@ package io.rsocket.kotlin.core
 import io.rsocket.kotlin.*
 import io.rsocket.kotlin.internal.*
 
-@OptIn(TransportApi::class)
+@OptIn(TransportApi::class, ExperimentalStreamsApi::class)
 internal inline fun Connection.connect(
     isServer: Boolean,
     interceptors: Interceptors,
     connectionConfig: ConnectionConfig,
     acceptor: ConnectionAcceptor,
+    noinline defaultRequestStrategy: () -> RequestStrategy,
     beforeStart: () -> Unit = {},
-): RSocket {
-    val state = RSocketState(this, connectionConfig.keepAlive)
-    val requester = RSocketRequester(state, StreamId(isServer)).let(interceptors::wrapRequester)
+): RSocketRequester {
+    val state = RSocketState(this, connectionConfig.keepAlive, defaultRequestStrategy)
+    val requester = RSocketRequesterImpl(state, StreamId(isServer)).let(interceptors::wrapRequester)
     val connectionContext = ConnectionAcceptorContext(connectionConfig, requester)
     val requestHandler = with(interceptors.wrapAcceptor(acceptor)) { connectionContext.accept() }.let(interceptors::wrapResponder)
     beforeStart()

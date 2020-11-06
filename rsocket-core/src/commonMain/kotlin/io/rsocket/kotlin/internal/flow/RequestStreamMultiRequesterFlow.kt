@@ -16,29 +16,32 @@
 
 package io.rsocket.kotlin.internal.flow
 
+import io.rsocket.kotlin.*
 import io.rsocket.kotlin.frame.*
 import io.rsocket.kotlin.internal.*
 import io.rsocket.kotlin.payload.*
-import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlin.coroutines.*
 
-internal class RequestStreamRequesterFlow(
-    private val payload: Payload,
-    private val requester: RSocketRequester,
-    state: RSocketState,
-    context: CoroutineContext = EmptyCoroutineContext,
-    capacity: Int = Channel.BUFFERED,
-) : StreamFlow(state, context, capacity) {
-    override fun create(context: CoroutineContext, capacity: Int): RequestStreamRequesterFlow =
-        RequestStreamRequesterFlow(payload, requester, state, context, capacity)
+@OptIn(ExperimentalStreamsApi::class)
+internal class RequestStreamMultiRequesterFlow(
+    private val payloadProvider: suspend () -> Payload,
+    private val requester: RSocketRequesterImpl,
+    private val state: RSocketState,
+    private val strategyProvider: () -> RequestStrategy,
+) : ReactiveFlow<Payload> {
+    override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> =
+        RequestStreamMultiRequesterFlow(payloadProvider, requester, state, strategy)
 
-    override suspend fun collectImpl(collectContext: CoroutineContext, collector: FlowCollector<Payload>): Unit = with(state) {
+    @InternalCoroutinesApi
+    override suspend fun collect(collector: FlowCollector<Payload>) = with(state) {
+        val payload = payloadProvider()
         payload.closeOnError {
+            val strategy = strategyProvider()
             val streamId = requester.createStream()
             val receiver = createReceiverFor(streamId)
-            send(RequestStreamFrame(streamId, requestSize, payload))
-            collectStream(streamId, receiver, collectContext, collector)
+            send(RequestStreamFrame(streamId, strategy.initialRequest, payload))
+            collectStream(streamId, receiver, strategy, collector)
         }
     }
 }

@@ -39,7 +39,7 @@ val rSocketAcceptor: ConnectionAcceptor = ConnectionAcceptor {
     }
 }
 
-suspend fun RSocket.doSomething() {
+suspend fun RSocketRequester.doSomething() {
     //            launch { rSocket.requestResponse(Payload(byteArrayOf(1, 1, 1), byteArrayOf(2, 2, 2))) }
 //        launch { rSocket.fireAndForget(Payload(byteArrayOf(1, 1, 1), byteArrayOf(2, 2, 2))) }
 //        launch { rSocket.metadataPush(byteArrayOf(1, 2, 3)) }
@@ -47,7 +47,7 @@ suspend fun RSocket.doSomething() {
     requestStream(buildPayload {
         data(byteArrayOf(1, 1, 1))
         metadata(byteArrayOf(2, 2, 2))
-    }).buffer(10000).collect {
+    }).requestBy(10000).collect {
         println(it.data.readBytes().contentToString())
         if (++i == 10000) error("")
     }

@@ -30,7 +30,7 @@ import kotlin.time.*
 abstract class TransportTest : SuspendTest {
     override val testTimeout: Duration = TransportTestDefaultDuration
 
-    lateinit var client: RSocket //should be assigned in `before`
+    lateinit var client: RSocketRequester //should be assigned in `before`
 
     override suspend fun after() {
         client.cancelAndJoin()
@@ -73,7 +73,7 @@ abstract class TransportTest : SuspendTest {
         val request = flow {
             repeat(3) { emit(payload(it)) }
         }
-        val list = client.requestChannel(request).buffer(3).onEach { it.release() }.toList()
+        val list = client.requestChannel(request).requestOnly(3).onEach { it.release() }.toList()
         assertEquals(3, list.size)
     }
 
@@ -82,7 +82,7 @@ abstract class TransportTest : SuspendTest {
         val request = flow {
             repeat(200) { emit(LARGE_PAYLOAD) }
         }
-        val list = client.requestChannel(request).buffer(Int.MAX_VALUE).onEach { it.release() }.toList()
+        val list = client.requestChannel(request).requestByFixed(Int.MAX_VALUE).onEach { it.release() }.toList()
         assertEquals(200, list.size)
     }
 
@@ -91,7 +91,7 @@ abstract class TransportTest : SuspendTest {
         val request = flow {
             repeat(20_000) { emit(payload(7)) }
         }
-        val list = client.requestChannel(request).buffer(Int.MAX_VALUE).onEach {
+        val list = client.requestChannel(request).requestByFixed(Int.MAX_VALUE).onEach {
             assertEquals(MOCK_DATA, it.data.readText())
             assertEquals(MOCK_METADATA, it.metadata?.readText())
         }.toList()
@@ -103,7 +103,7 @@ abstract class TransportTest : SuspendTest {
         val request = flow {
             repeat(200_000) { emit(payload(it)) }
         }
-        val list = client.requestChannel(request).buffer(Int.MAX_VALUE).onEach { it.release() }.toList()
+        val list = client.requestChannel(request).requestByFixed(Int.MAX_VALUE).onEach { it.release() }.toList()
         assertEquals(200_000, list.size)
     }
 
@@ -154,7 +154,7 @@ abstract class TransportTest : SuspendTest {
 
     @Test
     fun requestStream5() = test {
-        val list = client.requestStream(payload(3)).buffer(5).take(5).onEach { checkPayload(it) }.toList()
+        val list = client.requestStream(payload(3)).requestOnly(5).onEach { checkPayload(it) }.toList()
         assertEquals(5, list.size)
     }
 

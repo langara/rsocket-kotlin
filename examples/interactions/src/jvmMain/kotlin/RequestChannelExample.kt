@@ -26,8 +26,8 @@ fun main(): Unit = runBlocking {
     val server = LocalServer()
     RSocketServer().bind(server) {
         RSocketRequestHandler {
-            requestChannel { request ->
-                request.buffer(3).take(3).flatMapConcat { payload ->
+            requestChannel { initPayload, request ->
+                request.requestOnly(2).onStart { emit(initPayload) }.flatMapConcat { payload ->
                     val data = payload.data.readText()
                     flow {
                         repeat(3) {

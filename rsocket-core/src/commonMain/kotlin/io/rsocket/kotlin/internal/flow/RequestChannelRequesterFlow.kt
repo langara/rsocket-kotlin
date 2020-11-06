@@ -16,6 +16,7 @@
 
 package io.rsocket.kotlin.internal.flow
 
+import io.rsocket.kotlin.*
 import io.rsocket.kotlin.frame.*
 import io.rsocket.kotlin.internal.*
 import io.rsocket.kotlin.internal.cancelConsumed
@@ -23,25 +24,26 @@ import io.rsocket.kotlin.payload.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
-import kotlin.coroutines.*
 
+@OptIn(ExperimentalStreamsApi::class)
 internal class RequestChannelRequesterFlow(
     private val payloads: Flow<Payload>,
-    private val requester: RSocketRequester,
-    state: RSocketState,
-    context: CoroutineContext = EmptyCoroutineContext,
-    capacity: Int = Channel.BUFFERED,
-) : StreamFlow(state, context, capacity) {
-    override fun create(context: CoroutineContext, capacity: Int): RequestChannelRequesterFlow =
-        RequestChannelRequesterFlow(payloads, requester, state, context, capacity)
+    private val requester: RSocketRequesterImpl,
+    private val state: RSocketState,
+    private val strategyProvider: () -> RequestStrategy,
+) : ReactiveFlow<Payload> {
+    override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> =
+        RequestChannelRequesterFlow(payloads, requester, state, strategy)
 
-    override suspend fun collectImpl(collectContext: CoroutineContext, collector: FlowCollector<Payload>): Unit = with(state) {
+    @InternalCoroutinesApi
+    override suspend fun collect(collector: FlowCollector<Payload>): Unit = with(state) {
+        val strategy = strategyProvider()
         val streamId = requester.createStream()
         val receiverDeferred = CompletableDeferred<ReceiveChannel<RequestFrame>?>()
         val request = launchCancelable(streamId) {
             payloads.collectLimiting(
                 streamId,
-                RequestChannelRequesterFlowCollector(state, streamId, receiverDeferred, requestSize)
+                RequestChannelRequesterFlowCollector(state, streamId, receiverDeferred, strategy.initialRequest)
             )
             if (receiverDeferred.isCompleted && !receiverDeferred.isCancelled) send(CompletePayloadFrame(streamId))
         }
@@ -56,7 +58,7 @@ internal class RequestChannelRequesterFlow(
         }
         try {
             val receiver = receiverDeferred.await() ?: return
-            collectStream(streamId, receiver, collectContext, collector)
+            collectStream(streamId, receiver, strategy, collector)
         } catch (e: Throwable) {
             if (e is CancellationException) request.cancel(e)
             else request.cancel("Receiver failed", e)

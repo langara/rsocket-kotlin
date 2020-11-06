@@ -22,13 +22,14 @@ import io.rsocket.kotlin.frame.io.*
 import io.rsocket.kotlin.logging.*
 import io.rsocket.kotlin.transport.*
 
-@OptIn(TransportApi::class)
-class RSocketServer internal constructor(
+@OptIn(TransportApi::class, ExperimentalStreamsApi::class)
+public class RSocketServer internal constructor(
     private val loggerFactory: LoggerFactory,
     private val interceptors: Interceptors,
+    private val defaultRequestStrategy: () -> RequestStrategy,
 ) {
 
-    fun <T> bind(
+    public fun <T> bind(
         transport: ServerTransport<T>,
         acceptor: ConnectionAcceptor,
     ): T = transport.start {
@@ -45,7 +46,7 @@ class RSocketServer internal constructor(
             setupPayload = setupFrame.payload
         )
         try {
-            connect(isServer = true, interceptors, connectionConfig, acceptor)
+            connect(isServer = true, interceptors, connectionConfig, acceptor, defaultRequestStrategy)
         } catch (e: Throwable) {
             failSetup(RSocketError.Setup.Rejected(e.message ?: "Rejected by server acceptor"))
         }

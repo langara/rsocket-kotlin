@@ -19,11 +19,12 @@ package io.rsocket.kotlin.internal
 import io.rsocket.kotlin.*
 import io.rsocket.kotlin.frame.*
 import io.rsocket.kotlin.internal.flow.*
+import io.rsocket.kotlin.payload.*
 import kotlinx.coroutines.*
 
-internal class RSocketResponder(
+internal class RSocketResponderImpl(
     private val state: RSocketState,
-    private val requestHandler: RSocket,
+    private val requestHandler: RSocketResponder,
 ) : Cancelable by state {
 
     fun handleMetadataPush(frame: MetadataPushFrame) {
@@ -72,13 +73,14 @@ internal class RSocketResponder(
 
     fun handleRequestChannel(initFrame: RequestFrame): Unit = with(state) {
         val streamId = initFrame.streamId
-        val receiver = createReceiverFor(streamId, initFrame)
+        val initPayload = initFrame.payload
+        val receiver = createReceiverFor(streamId)
 
-        val request = RequestChannelResponderFlow(streamId, receiver, state)
+        val request = RequestChannelResponderFlow(streamId, receiver, state, state.defaultRequestStrategy)
 
         launchCancelable(streamId) {
             val response = requestOrCancel(streamId) {
-                requestHandler.requestChannel(request)
+                requestHandler.requestChannel(initPayload, request)
             } ?: return@launchCancelable
             response.collectLimiting(
                 streamId,

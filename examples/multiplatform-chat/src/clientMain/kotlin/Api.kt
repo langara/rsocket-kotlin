@@ -25,7 +25,7 @@ import io.rsocket.kotlin.payload.*
 import io.rsocket.kotlin.transport.ktor.*
 import io.rsocket.kotlin.transport.ktor.client.*
 
-class Api(rSocket: RSocket) {
+class Api(rSocket: RSocketRequester) {
     private val proto = ConfiguredProtoBuf
     val users = UserApi(rSocket, proto)
     val chats = ChatApi(rSocket, proto)

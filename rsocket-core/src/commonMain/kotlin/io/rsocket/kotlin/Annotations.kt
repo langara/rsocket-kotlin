@@ -30,3 +30,10 @@ public annotation class TransportApi
     message = "This is an API to work with metadata. This API can change in future in non backwards-incompatible manner."
 )
 public annotation class ExperimentalMetadataApi
+
+@Retention(value = AnnotationRetention.BINARY)
+@RequiresOptIn(
+    level = RequiresOptIn.Level.WARNING,
+    message = "This is an API to customize request strategy of streams. This API can change in future in non backwards-incompatible manner."
+)
+public annotation class ExperimentalStreamsApi

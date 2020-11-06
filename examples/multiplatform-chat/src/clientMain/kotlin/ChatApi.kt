@@ -21,7 +21,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 
 @OptIn(ExperimentalSerializationApi::class)
-actual class ChatApi(private val rSocket: RSocket, private val proto: ProtoBuf) {
+actual class ChatApi(private val rSocket: RSocketRequester, private val proto: ProtoBuf) {
     actual suspend fun all(): List<Chat> = proto.decodeFromPayload(
         rSocket.requestResponse(Payload(route = "chats.all", ByteReadPacket.Empty))
     )

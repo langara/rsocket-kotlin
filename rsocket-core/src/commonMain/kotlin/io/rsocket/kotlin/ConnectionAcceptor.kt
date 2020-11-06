@@ -20,12 +20,12 @@ import io.rsocket.kotlin.keepalive.*
 import io.rsocket.kotlin.payload.*
 
 public fun interface ConnectionAcceptor {
-    public fun ConnectionAcceptorContext.accept(): RSocket
+    public fun ConnectionAcceptorContext.accept(): RSocketResponder
 }
 
 public class ConnectionAcceptorContext internal constructor(
     public val config: ConnectionConfig,
-    public val requester: RSocket,
+    public val requester: RSocketRequester,
 )
 
 public class ConnectionConfig internal constructor(

@@ -62,7 +62,7 @@ fun main(): Unit = runBlocking {
     })
 
     //do request
-    rSocket.requestStream(Payload("Hello", "World")).buffer(3).take(3).collect {
+    rSocket.requestStream(Payload("Hello", "World")).requestOnly(3).collect {
         val index = it.data.readText().substringAfter("Payload: ").toInt()
         println("Client receives index: $index")
     }

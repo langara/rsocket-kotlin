@@ -44,7 +44,7 @@ fun main(): Unit = runBlocking {
     val response = rSocket.requestStream(Payload("Hello", "World"))
 
     response
-        .buffer(2) //use buffer as first operator to use RequestN semantic, so request by 2 elements
+        .requestBy(2) //use buffer as first operator to use RequestN semantic, so request by 2 elements
         .map { it.data.readText().substringAfter("Payload: ").toInt() }
         .take(2)
         .collect {

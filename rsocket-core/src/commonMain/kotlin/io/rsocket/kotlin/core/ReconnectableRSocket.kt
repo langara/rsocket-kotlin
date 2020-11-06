@@ -29,14 +29,14 @@ internal typealias ReconnectPredicate = suspend (cause: Throwable, attempt: Long
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 internal suspend fun ReconnectableRSocket(
     logger: Logger,
-    connect: suspend () -> RSocket,
+    connect: suspend () -> RSocketRequester,
     predicate: ReconnectPredicate,
-): RSocket {
+): RSocketRequester {
     val state = MutableStateFlow<ReconnectState>(ReconnectState.Connecting)
 
     val job =
         connect.asFlow()
-            .map<RSocket, ReconnectState> { ReconnectState.Connected(it) } //if connection established - state = connected
+            .map<RSocketRequester, ReconnectState> { ReconnectState.Connected(it) } //if connection established - state = connected
             .onStart { emit(ReconnectState.Connecting) } //init - state = connecting
             .retryWhen { cause, attempt ->
                 logger.debug(cause) { "Connection establishment failed, attempt: $attempt. Trying to reconnect..." }
@@ -88,21 +88,21 @@ private fun Flow<*>.launchRestarting(): Job = GlobalScope.launch(Dispatchers.Unc
 private sealed class ReconnectState {
     object Connecting : ReconnectState()
     data class Failed(val error: Throwable) : ReconnectState()
-    data class Connected(val rSocket: RSocket) : ReconnectState()
+    data class Connected(val rSocket: RSocketRequester) : ReconnectState()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 private class ReconnectableRSocket(
     override val job: Job,
     private val state: StateFlow<ReconnectState>,
-) : RSocket {
+) : RSocketRequester {
 
     private val reconnectHandler = state.mapNotNull { it.handleState { null } }.take(1)
 
     //null pointer will never happen
-    private suspend fun currentRSocket(): RSocket = state.value.handleState { reconnectHandler.first() }!!
+    private suspend fun currentRSocket(): RSocketRequester = state.value.handleState { reconnectHandler.first() }!!
 
-    private inline fun ReconnectState.handleState(onReconnect: () -> RSocket?): RSocket? = when (this) {
+    private inline fun ReconnectState.handleState(onReconnect: () -> RSocketRequester?): RSocketRequester? = when (this) {
         is ReconnectState.Connected -> when {
             rSocket.isActive -> rSocket //connection is ready to handle requests
             else             -> onReconnect() //reconnection
@@ -111,16 +111,52 @@ private class ReconnectableRSocket(
         ReconnectState.Connecting   -> onReconnect() //reconnection
     }
 
-    private suspend inline fun <T : Any> execSuspend(operation: RSocket.() -> T): T =
-        currentRSocket().operation()
+    override suspend fun metadataPush(metadata: ByteReadPacket): Unit = currentRSocket().metadataPush(metadata)
+    override suspend fun fireAndForget(payload: Payload): Unit = currentRSocket().fireAndForget(payload)
+    override suspend fun requestResponse(payload: Payload): Payload = currentRSocket().requestResponse(payload)
+    override fun requestStream(payload: Payload): ReactiveFlow<Payload> = RequestStreamSingleFlow(payload)
+    override fun requestStream(payload: suspend () -> Payload): ReactiveFlow<Payload> = RequestStreamMultiFlow(payload)
+    override fun requestChannel(payloads: Flow<Payload>): ReactiveFlow<Payload> = RequestChannelFlow(payloads)
 
-    private inline fun execFlow(crossinline operation: RSocket.() -> Flow<Payload>): Flow<Payload> =
-        flow { emitAll(currentRSocket().operation()) }
+    @OptIn(ExperimentalStreamsApi::class)
+    private inner class RequestStreamSingleFlow(
+        private val payload: Payload,
+        strategy: (() -> RequestStrategy)? = null,
+    ) : LazyReactiveFlow<Payload>(strategy) {
+        override suspend fun flow(): ReactiveFlow<Payload> = currentRSocket().requestStream(payload)
+        override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = RequestStreamSingleFlow(payload, strategy)
+    }
 
-    override suspend fun metadataPush(metadata: ByteReadPacket): Unit = execSuspend { metadataPush(metadata) }
-    override suspend fun fireAndForget(payload: Payload): Unit = execSuspend { fireAndForget(payload) }
-    override suspend fun requestResponse(payload: Payload): Payload = execSuspend { requestResponse(payload) }
-    override fun requestStream(payload: Payload): Flow<Payload> = execFlow { requestStream(payload) }
-    override fun requestChannel(payloads: Flow<Payload>): Flow<Payload> = execFlow { requestChannel(payloads) }
+    @OptIn(ExperimentalStreamsApi::class)
+    private inner class RequestStreamMultiFlow(
+        private val payload: suspend () -> Payload,
+        strategy: (() -> RequestStrategy)? = null,
+    ) : LazyReactiveFlow<Payload>(strategy) {
+        override suspend fun flow(): ReactiveFlow<Payload> = currentRSocket().requestStream(payload)
+        override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = RequestStreamMultiFlow(payload, strategy)
+    }
 
+    @OptIn(ExperimentalStreamsApi::class)
+    private inner class RequestChannelFlow(
+        private val payloads: Flow<Payload>,
+        strategy: (() -> RequestStrategy)? = null,
+    ) : LazyReactiveFlow<Payload>(strategy) {
+        override suspend fun flow(): ReactiveFlow<Payload> = currentRSocket().requestChannel(payloads)
+        override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = RequestChannelFlow(payloads, strategy)
+    }
+
+}
+
+@OptIn(ExperimentalStreamsApi::class)
+private abstract class LazyReactiveFlow<out T>(private val strategy: (() -> RequestStrategy)?) : ReactiveFlow<T> {
+
+    abstract suspend fun flow(): ReactiveFlow<T>
+
+    @InternalCoroutinesApi
+    override suspend fun collect(collector: FlowCollector<T>) {
+        when (strategy) {
+            null -> flow()
+            else -> flow().request(strategy)
+        }.collect(collector)
+    }
 }

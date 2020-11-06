@@ -25,20 +25,20 @@ import io.rsocket.kotlin.transport.*
 
 public suspend fun HttpClient.rSocket(
     request: HttpRequestBuilder.() -> Unit,
-): RSocket = rSocket(clientTransport(request))
+): RSocketRequester = rSocket(clientTransport(request))
 
 public suspend fun HttpClient.rSocket(
     urlString: String,
     secure: Boolean = false,
     request: HttpRequestBuilder.() -> Unit = {},
-): RSocket = rSocket(clientTransport(urlString, secure, request))
+): RSocketRequester = rSocket(clientTransport(urlString, secure, request))
 
 public suspend fun HttpClient.rSocket(
     host: String = "localhost", port: Int = DEFAULT_PORT, path: String = "/",
     secure: Boolean = false,
-): RSocket = rSocket(clientTransport(host, port, path, secure))
+): RSocketRequester = rSocket(clientTransport(host, port, path, secure))
 
 
 private suspend fun HttpClient.rSocket(
     transport: ClientTransport,
-): RSocket = get(RSocketSupport).connector.connect(transport)
+): RSocketRequester = get(RSocketSupport).connector.connect(transport)

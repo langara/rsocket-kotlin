@@ -24,10 +24,10 @@ import io.rsocket.kotlin.payload.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-internal class RSocketRequester(
+internal class RSocketRequesterImpl(
     private val state: RSocketState,
     private val streamId: StreamId,
-) : RSocket, Cancelable by state {
+) : RSocketRequester, Cancelable by state {
 
     override suspend fun metadataPush(metadata: ByteReadPacket): Unit = metadata.closeOnError {
         checkAvailable()
@@ -50,9 +50,17 @@ internal class RSocketRequester(
         }
     }
 
-    override fun requestStream(payload: Payload): Flow<Payload> = RequestStreamRequesterFlow(payload, this, state)
+    override fun requestStream(payload: Payload): ReactiveFlow<Payload> {
+        return RequestStreamSingleRequesterFlow(payload, this, state, state.defaultRequestStrategy)
+    }
 
-    override fun requestChannel(payloads: Flow<Payload>): Flow<Payload> = RequestChannelRequesterFlow(payloads, this, state)
+    override fun requestStream(payload: suspend () -> Payload): ReactiveFlow<Payload> {
+        return RequestStreamMultiRequesterFlow(payload, this, state, state.defaultRequestStrategy)
+    }
+
+    override fun requestChannel(payloads: Flow<Payload>): ReactiveFlow<Payload> {
+        return RequestChannelRequesterFlow(payloads, this, state, state.defaultRequestStrategy)
+    }
 
     fun createStream(): Int {
         checkAvailable()

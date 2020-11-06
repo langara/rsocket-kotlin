@@ -30,7 +30,7 @@ class SetupRejectionTest : SuspendTest, TestWithLeakCheck {
     @Test
     fun responderRejectSetup() = test {
         val errorMessage = "error"
-        val sendingRSocket = CompletableDeferred<RSocket>()
+        val sendingRSocket = CompletableDeferred<RSocketRequester>()
 
         val connection = TestConnection()
 

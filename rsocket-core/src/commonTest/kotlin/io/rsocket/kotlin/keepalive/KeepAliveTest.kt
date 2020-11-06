@@ -27,9 +27,9 @@ import kotlin.time.*
 
 class KeepAliveTest : TestWithConnection(), TestWithLeakCheck {
 
-    private fun requester(keepAlive: KeepAlive = KeepAlive(100.milliseconds, 1.seconds)): RSocket = run {
-        val state = RSocketState(connection, keepAlive)
-        val requester = RSocketRequester(state, StreamId.client())
+    private fun requester(keepAlive: KeepAlive = KeepAlive(100.milliseconds, 1.seconds)): Cancelable = run {
+        val state = RSocketState(connection, keepAlive, DefaultStrategy)
+        val requester = RSocketRequesterImpl(state, StreamId.client())
         state.start(RSocketRequestHandler { })
         requester
     }

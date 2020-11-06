@@ -20,29 +20,33 @@ import io.ktor.utils.io.core.*
 import io.rsocket.kotlin.payload.*
 import kotlinx.coroutines.flow.*
 
-interface RSocket : Cancelable {
+public interface RSocketResponder : Cancelable {
 
-    suspend fun metadataPush(metadata: ByteReadPacket) {
+    public suspend fun metadataPush(metadata: ByteReadPacket) {
         metadata.release()
         notImplemented("Metadata Push")
     }
 
-    suspend fun fireAndForget(payload: Payload) {
+    public suspend fun fireAndForget(payload: Payload) {
         payload.release()
         notImplemented("Fire and Forget")
     }
 
-    suspend fun requestResponse(payload: Payload): Payload {
+    public suspend fun requestResponse(payload: Payload): Payload {
         payload.release()
         notImplemented("Request Response")
     }
 
-    fun requestStream(payload: Payload): Flow<Payload> {
+    // result will be collected only once
+    public suspend fun requestStream(payload: Payload): Flow<Payload> {
         payload.release()
         notImplemented("Request Stream")
     }
 
-    fun requestChannel(payloads: Flow<Payload>): Flow<Payload> {
+    // `payloads` can be collected only once
+    // result will be collected only once
+    public suspend fun requestChannel(initPayload: Payload, payloads: ReactiveFlow<Payload>): Flow<Payload> {
+        initPayload.release()
         notImplemented("Request Channel")
     }
 }

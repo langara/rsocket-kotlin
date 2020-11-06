@@ -13,21 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(ExperimentalStreamsApi::class)
 
 package io.rsocket.kotlin.core
 
+import io.rsocket.kotlin.*
 import io.rsocket.kotlin.logging.*
 
 public class RSocketServerBuilder internal constructor() {
     public var loggerFactory: LoggerFactory = DefaultLoggerFactory
 
     private val interceptors: InterceptorsBuilder = InterceptorsBuilder()
+    private var defaultRequestStrategy: () -> RequestStrategy = DefaultStrategy
 
     public fun interceptors(configure: InterceptorsBuilder.() -> Unit) {
         interceptors.configure()
     }
 
-    internal fun build(): RSocketServer = RSocketServer(loggerFactory, interceptors.build())
+    @ExperimentalStreamsApi
+    public fun defaultRequestStrategy(block: () -> RequestStrategy) {
+        defaultRequestStrategy = block
+    }
+
+    internal fun build(): RSocketServer = RSocketServer(loggerFactory, interceptors.build(), defaultRequestStrategy)
 }
 
 public fun RSocketServer(configure: RSocketServerBuilder.() -> Unit = {}): RSocketServer {

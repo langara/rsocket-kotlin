@@ -17,8 +17,8 @@
 package io.rsocket.kotlin.core
 
 import app.cash.turbine.*
+import io.ktor.utils.io.core.*
 import io.rsocket.kotlin.*
-import io.rsocket.kotlin.logging.*
 import io.rsocket.kotlin.payload.*
 import io.rsocket.kotlin.test.*
 import kotlinx.atomicfu.*
@@ -31,11 +31,11 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
     //needed for native
     private val fails = atomic(0)
     private val first = atomic(true)
-    private val logger = DefaultLoggerFactory.logger("io.rsocket.kotlin.connection")
+    private val logger = TestLoggerFactory.logger("io.rsocket.kotlin.connection")
 
     @Test
     fun testConnectFail() = test {
-        val connect: suspend () -> RSocket = { error("Failed to connect") }
+        val connect: suspend () -> RSocketRequester = { error("Failed to connect") }
 
         assertFailsWith(IllegalStateException::class, "Failed to connect") {
             ReconnectableRSocket(logger, connect) { cause, attempt ->
@@ -51,7 +51,7 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
     @Test
     fun testReconnectFail() = test {
         val firstJob = Job()
-        val connect: suspend () -> RSocket = {
+        val connect: suspend () -> RSocketRequester = {
             if (first.value) {
                 first.value = false
                 rrHandler(firstJob)
@@ -84,7 +84,7 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
     @Test
     fun testReconnectSuccess() = test {
         val handlerJob = Job()
-        val connect: suspend () -> RSocket = {
+        val connect: suspend () -> RSocketRequester = {
             if (first.value) {
                 first.value = false
                 error("Failed to connect")
@@ -108,7 +108,7 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
 
     @Test
     fun testConnectSuccessAfterTime() = test {
-        val connect: suspend () -> RSocket = {
+        val connect: suspend () -> RSocketRequester = {
             if (fails.value < 5) {
                 delay(200)
                 error("Failed to connect")
@@ -133,7 +133,7 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
     @Test
     fun testReconnectSuccessAfterFail() = test {
         val firstJob = Job()
-        val connect: suspend () -> RSocket = {
+        val connect: suspend () -> RSocketRequester = {
             when {
                 first.value     -> {
                     first.value = false
@@ -166,7 +166,7 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
     @Test
     fun testReconnectSuccessAfterFaiStream() = test {
         val firstJob = Job()
-        val connect: suspend () -> RSocket = {
+        val connect: suspend () -> RSocketRequester = {
             when {
                 first.value     -> {
                     first.value = false
@@ -206,8 +206,8 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
         assertEquals(5, fails.value)
     }
 
-    private fun rrHandler(job: Job): RSocket = RSocketRequestHandler(job) { requestResponse { it } }
-    private fun streamHandler(job: Job): RSocket = RSocketRequestHandler(job) {
+    private fun rrHandler(job: Job): RSocketRequester = RSocketRequestHandler(job) { requestResponse { it } }.let(::ProxyRSocket)
+    private fun streamHandler(job: Job): RSocketRequester = RSocketRequestHandler(job) {
         requestStream {
             flow {
                 repeat(5) {
@@ -217,5 +217,40 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
                 }
             }
         }
+    }.let(::ProxyRSocket)
+}
+
+@OptIn(ExperimentalStreamsApi::class)
+private class ProxyRSocket(private val responder: RSocketResponder) : RSocketRequester, Cancelable by responder {
+    override suspend fun metadataPush(metadata: ByteReadPacket) {
+        responder.metadataPush(metadata)
     }
+
+    override suspend fun fireAndForget(payload: Payload) {
+        responder.fireAndForget(payload)
+    }
+
+    override suspend fun requestResponse(payload: Payload): Payload {
+        return responder.requestResponse(payload)
+    }
+
+    override fun requestStream(payload: Payload): ReactiveFlow<Payload> = reactiveFlow {
+        responder.requestStream(payload)
+    }
+
+    override fun requestStream(payload: suspend () -> Payload): ReactiveFlow<Payload> = reactiveFlow {
+        responder.requestStream(payload())
+    }
+
+    override fun requestChannel(payloads: Flow<Payload>): ReactiveFlow<Payload> = reactiveFlow {
+        val channel = payloads.produceIn(GlobalScope)
+        val requestPayloads = reactiveFlow { channel.consumeAsFlow() }
+        responder.requestChannel(channel.receive(), requestPayloads)
+    }
+}
+
+@OptIn(ExperimentalStreamsApi::class)
+private inline fun reactiveFlow(crossinline block: suspend () -> Flow<Payload>): ReactiveFlow<Payload> = object : ReactiveFlow<Payload> {
+    override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = this
+    override suspend fun collect(collector: FlowCollector<Payload>) = block().collect(collector)
 }

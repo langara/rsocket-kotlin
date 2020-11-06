@@ -27,31 +27,33 @@ import kotlin.random.*
 
 class RSocketKotlinBenchmark : RSocketBenchmark<Payload>() {
 
-    lateinit var client: RSocket
+    lateinit var client: RSocketRequester
     lateinit var server: Job
 
     lateinit var payload: Payload
     lateinit var payloadsFlow: Flow<Payload>
 
+    fun payloadCopy(): Payload = payload.copy()
+
     override fun setup() {
         payload = createPayload(payloadSize)
-        payloadsFlow = flow { repeat(5000) { emit(payload.copy()) } }
+        payloadsFlow = flow { repeat(5000) { emit(payloadCopy()) } }
 
         val localServer = LocalServer()
         server = RSocketServer().bind(localServer) {
             RSocketRequestHandler {
                 requestResponse {
                     it.release()
-                    payload
+                    payloadCopy()
                 }
                 requestStream {
                     it.release()
                     payloadsFlow
                 }
-                requestChannel { it }
+                requestChannel { init, it -> it.requestByFixed(64).onStart { emit(init) } }
             }
         }
-        return runBlocking {
+        client = runBlocking {
             RSocketConnector().connect(localServer)
         }
     }
@@ -72,10 +74,10 @@ class RSocketKotlinBenchmark : RSocketBenchmark<Payload>() {
         payload.release()
     }
 
-    override suspend fun doRequestResponse(): Payload = client.requestResponse(payload.copy())
+    override suspend fun doRequestResponse(): Payload = client.requestResponse(payloadCopy())
 
-    override suspend fun doRequestStream(): Flow<Payload> = client.requestStream(payload.copy())
+    override suspend fun doRequestStream(): Flow<Payload> = client.requestStream(payloadCopy()).requestByFixed(64)
 
-    override suspend fun doRequestChannel(): Flow<Payload> = client.requestChannel(payloadsFlow)
+    override suspend fun doRequestChannel(): Flow<Payload> = client.requestChannel(payloadsFlow).requestByFixed(64)
 
 }

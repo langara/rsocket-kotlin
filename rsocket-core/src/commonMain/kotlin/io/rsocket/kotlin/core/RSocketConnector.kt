@@ -22,16 +22,17 @@ import io.rsocket.kotlin.frame.io.*
 import io.rsocket.kotlin.logging.*
 import io.rsocket.kotlin.transport.*
 
-@OptIn(TransportApi::class)
-class RSocketConnector internal constructor(
+@OptIn(TransportApi::class, ExperimentalStreamsApi::class)
+public class RSocketConnector internal constructor(
     private val loggerFactory: LoggerFactory,
     private val interceptors: Interceptors,
     private val connectionConfigProvider: () -> ConnectionConfig,
     private val acceptor: ConnectionAcceptor,
     private val reconnectPredicate: ReconnectPredicate?,
+    private val defaultRequestStrategy: () -> RequestStrategy
 ) {
 
-    suspend fun connect(transport: ClientTransport): RSocket = when (reconnectPredicate) {
+    public suspend fun connect(transport: ClientTransport): RSocketRequester = when (reconnectPredicate) {
         null -> connectOnce(transport)
         else -> ReconnectableRSocket(
             logger = loggerFactory.logger("io.rsocket.kotlin.connection"),
@@ -40,11 +41,11 @@ class RSocketConnector internal constructor(
         )
     }
 
-    private suspend fun connectOnce(transport: ClientTransport): RSocket {
+    private suspend fun connectOnce(transport: ClientTransport): RSocketRequester {
         val connection = transport.connect().wrapConnection()
         val connectionConfig = connectionConfigProvider()
 
-        return connection.connect(isServer = false, interceptors, connectionConfig, acceptor) {
+        return connection.connect(isServer = false, interceptors, connectionConfig, acceptor, defaultRequestStrategy) {
             val setupFrame = SetupFrame(
                 version = Version.Current,
                 honorLease = false,

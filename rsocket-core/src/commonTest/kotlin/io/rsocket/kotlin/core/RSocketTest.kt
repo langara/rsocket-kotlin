@@ -39,7 +39,7 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
         testJob.cancelAndJoin()
     }
 
-    private suspend fun start(handler: RSocket? = null): RSocket {
+    private suspend fun start(handler: RSocketResponder? = null): RSocketRequester {
         val localServer = LocalServer(testJob)
         RSocketServer {
             loggerFactory = NoopLogger
@@ -50,8 +50,8 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
                     it.release()
                     flow { repeat(10) { emit(payload("server got -> [$it]")) } }
                 }
-                requestChannel {
-                    it.onEach { it.release() }.launchIn(CoroutineScope(job))
+                requestChannel { init, payloads ->
+                    payloads.onStart { emit(init) }.onEach { it.release() }.launchIn(CoroutineScope(job))
                     flow { repeat(10) { emit(payload("server got -> [$it]")) } }
                 }
             }
@@ -116,7 +116,7 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
                 }
             }
         })
-        requester.requestStream(payload("HELLO")).buffer(1).test {
+        requester.requestStream(payload("HELLO")).requestByFixed(1).test {
             repeat(3) {
                 expectItem().release()
             }
@@ -138,7 +138,7 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
             }
         })
         requester.requestStream(payload("HELLO"))
-            .buffer(10)
+            .requestByFixed(10)
             .withIndex()
             .onEach { if (it.index == 23) throw error("oops") }
             .map { it.value }
@@ -162,7 +162,7 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
             }
         })
         requester.requestStream(payload("HELLO"))
-            .buffer(15)
+            .requestByFixed(15)
             .take(3) //canceled after 3 element
             .test {
                 repeat(3) {
@@ -182,7 +182,7 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
             }
         })
         val channel = requester.requestStream(payload("HELLO"))
-            .buffer(5)
+            .requestByFixed(5)
             .take(18) //canceled after 18 element
             .produceIn(this)
 
@@ -211,7 +211,7 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
     fun testErrorPropagatesCorrectly() = test {
         val error = CompletableDeferred<Throwable>()
         val requester = start(RSocketRequestHandler {
-            requestChannel { it.catch { error.complete(it) } }
+            requestChannel { init, payloads -> payloads.onStart { emit(init) }.catch { error.complete(it) } }
         })
         val request = flow<Payload> { error("test") }
         val response = requester.requestChannel(request)
@@ -223,10 +223,10 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
     @Test
     fun testRequestPropagatesCorrectlyForRequestChannel() = test {
         val requester = start(RSocketRequestHandler {
-            requestChannel { it.buffer(3).take(3) }
+            requestChannel { init, payloads -> payloads.requestByFixed(3).onStart { emit(init) }.take(3) }
         })
         val request = (1..3).asFlow().map { payload(it.toString()) }
-        requester.requestChannel(request).buffer(3).test {
+        requester.requestChannel(request).requestByFixed(3).test {
             repeat(3) {
                 expectItem().release()
             }
@@ -328,8 +328,8 @@ class RSocketTest : SuspendTest, TestWithLeakCheck {
     ): Pair<ReceiveChannel<Payload>, ReceiveChannel<Payload>> {
         val responderDeferred = CompletableDeferred<ReceiveChannel<Payload>>()
         val requester = start(RSocketRequestHandler {
-            requestChannel {
-                responderDeferred.complete(it.produceIn(CoroutineScope(job)))
+            requestChannel { init, payloads ->
+                responderDeferred.complete(payloads.onStart { emit(init) }.produceIn(CoroutineScope(job)))
 
                 responderSendChannel.consumeAsFlow()
             }

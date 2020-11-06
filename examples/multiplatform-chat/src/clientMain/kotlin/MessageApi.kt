@@ -20,7 +20,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.protobuf.*
 
 @OptIn(ExperimentalSerializationApi::class)
-actual class MessageApi(private val rSocket: RSocket, private val proto: ProtoBuf) {
+actual class MessageApi(private val rSocket: RSocketRequester, private val proto: ProtoBuf) {
     actual suspend fun send(chatId: Int, content: String): Message = proto.decodeFromPayload(
         rSocket.requestResponse(
             proto.encodeToPayload(route = "messages.send", SendMessage(chatId, content))
