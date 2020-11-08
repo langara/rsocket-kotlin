@@ -37,7 +37,7 @@ public interface ReactiveFlow<out T> : Flow<T> {
 //     so collect will be smooth
 @ExperimentalStreamsApi
 public fun <T> ReactiveFlow<T>.requestBy(requestSize: Int, requestOn: Int = requestSize / 4): ReactiveFlow<T> {
-    require(requestOn > 0)
+    require(requestOn >= 0)
     require(requestSize > 0)
     require(requestOn < requestSize)
     return request { PrefetchStrategy(requestSize, requestOn) }
@@ -85,7 +85,7 @@ private class PrefetchStrategy(
     private val requestOn: Int,
 ) : RequestStrategy {
     init {
-        require(requestOn > 0)
+        require(requestOn >= 0)
         require(requestSize > 0)
         require(requestOn < requestSize)
     }
