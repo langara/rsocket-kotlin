@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.*
 internal class RSocketState(
     private val connection: Connection,
     keepAlive: KeepAlive,
-    val defaultRequestStrategy: () -> RequestStrategy
 ) : Cancelable by connection {
     private val prioritizer = Prioritizer()
     private val requestScope = CoroutineScope(SupervisorJob(job))
@@ -80,7 +79,7 @@ internal class RSocketState(
     suspend fun collectStream(
         streamId: Int,
         receiver: ReceiveChannel<RequestFrame>,
-        strategy: RequestStrategy,
+        strategy: RequestStrategy.Element,
         collector: FlowCollector<Payload>,
     ): Unit = consumeReceiverFor(streamId) {
         //TODO fragmentation

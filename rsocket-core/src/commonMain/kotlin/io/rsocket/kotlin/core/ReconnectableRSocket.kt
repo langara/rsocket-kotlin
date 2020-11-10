@@ -114,49 +114,6 @@ private class ReconnectableRSocket(
     override suspend fun metadataPush(metadata: ByteReadPacket): Unit = currentRSocket().metadataPush(metadata)
     override suspend fun fireAndForget(payload: Payload): Unit = currentRSocket().fireAndForget(payload)
     override suspend fun requestResponse(payload: Payload): Payload = currentRSocket().requestResponse(payload)
-    override fun requestStream(payload: Payload): ReactiveFlow<Payload> = RequestStreamSingleFlow(payload)
-    override fun requestStream(payload: suspend () -> Payload): ReactiveFlow<Payload> = RequestStreamMultiFlow(payload)
-    override fun requestChannel(payloads: Flow<Payload>): ReactiveFlow<Payload> = RequestChannelFlow(payloads)
-
-    @OptIn(ExperimentalStreamsApi::class)
-    private inner class RequestStreamSingleFlow(
-        private val payload: Payload,
-        strategy: (() -> RequestStrategy)? = null,
-    ) : LazyReactiveFlow<Payload>(strategy) {
-        override suspend fun flow(): ReactiveFlow<Payload> = currentRSocket().requestStream(payload)
-        override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = RequestStreamSingleFlow(payload, strategy)
-    }
-
-    @OptIn(ExperimentalStreamsApi::class)
-    private inner class RequestStreamMultiFlow(
-        private val payload: suspend () -> Payload,
-        strategy: (() -> RequestStrategy)? = null,
-    ) : LazyReactiveFlow<Payload>(strategy) {
-        override suspend fun flow(): ReactiveFlow<Payload> = currentRSocket().requestStream(payload)
-        override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = RequestStreamMultiFlow(payload, strategy)
-    }
-
-    @OptIn(ExperimentalStreamsApi::class)
-    private inner class RequestChannelFlow(
-        private val payloads: Flow<Payload>,
-        strategy: (() -> RequestStrategy)? = null,
-    ) : LazyReactiveFlow<Payload>(strategy) {
-        override suspend fun flow(): ReactiveFlow<Payload> = currentRSocket().requestChannel(payloads)
-        override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = RequestChannelFlow(payloads, strategy)
-    }
-
-}
-
-@OptIn(ExperimentalStreamsApi::class)
-private abstract class LazyReactiveFlow<out T>(private val strategy: (() -> RequestStrategy)?) : ReactiveFlow<T> {
-
-    abstract suspend fun flow(): ReactiveFlow<T>
-
-    @InternalCoroutinesApi
-    override suspend fun collect(collector: FlowCollector<T>) {
-        when (strategy) {
-            null -> flow()
-            else -> flow().request(strategy)
-        }.collect(collector)
-    }
+    override fun requestStream(payload: suspend () -> Payload): Flow<Payload> = flow { emitAll(currentRSocket().requestStream(payload)) }
+    override fun requestChannel(payloads: Flow<Payload>): Flow<Payload> = flow { emitAll(currentRSocket().requestChannel(payloads)) }
 }

@@ -18,26 +18,12 @@ package io.rsocket.kotlin
 
 import io.ktor.utils.io.core.*
 import io.rsocket.kotlin.payload.*
-import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
 
 public interface RSocketRequester : Cancelable {
-
     public suspend fun metadataPush(metadata: ByteReadPacket)
     public suspend fun fireAndForget(payload: Payload)
     public suspend fun requestResponse(payload: Payload): Payload
-
-    //single collect
-    public fun requestStream(payload: Payload): ReactiveFlow<Payload>
-
-    //multi collect
-    public fun requestStream(payload: suspend () -> Payload): ReactiveFlow<Payload>
-
-    //multi collect
-    public fun requestChannel(payloads: Flow<Payload>): ReactiveFlow<Payload>
-}
-
-//single collect
-public fun RSocketRequester.requestChannel(channel: ReceiveChannel<Payload>): ReactiveFlow<Payload> {
-    return requestChannel(channel.consumeAsFlow())
+    public fun requestStream(payload: suspend () -> Payload): Flow<Payload>
+    public fun requestChannel(payloads: Flow<Payload>): Flow<Payload>
 }

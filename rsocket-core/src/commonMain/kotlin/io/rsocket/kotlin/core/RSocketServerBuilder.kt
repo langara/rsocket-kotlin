@@ -24,18 +24,12 @@ public class RSocketServerBuilder internal constructor() {
     public var loggerFactory: LoggerFactory = DefaultLoggerFactory
 
     private val interceptors: InterceptorsBuilder = InterceptorsBuilder()
-    private var defaultRequestStrategy: () -> RequestStrategy = DefaultStrategy
 
     public fun interceptors(configure: InterceptorsBuilder.() -> Unit) {
         interceptors.configure()
     }
 
-    @ExperimentalStreamsApi
-    public fun defaultRequestStrategy(block: () -> RequestStrategy) {
-        defaultRequestStrategy = block
-    }
-
-    internal fun build(): RSocketServer = RSocketServer(loggerFactory, interceptors.build(), defaultRequestStrategy)
+    internal fun build(): RSocketServer = RSocketServer(loggerFactory, interceptors.build())
 }
 
 public fun RSocketServer(configure: RSocketServerBuilder.() -> Unit = {}): RSocketServer {

@@ -29,7 +29,6 @@ public class RSocketConnector internal constructor(
     private val connectionConfigProvider: () -> ConnectionConfig,
     private val acceptor: ConnectionAcceptor,
     private val reconnectPredicate: ReconnectPredicate?,
-    private val defaultRequestStrategy: () -> RequestStrategy
 ) {
 
     public suspend fun connect(transport: ClientTransport): RSocketRequester = when (reconnectPredicate) {
@@ -45,7 +44,7 @@ public class RSocketConnector internal constructor(
         val connection = transport.connect().wrapConnection()
         val connectionConfig = connectionConfigProvider()
 
-        return connection.connect(isServer = false, interceptors, connectionConfig, acceptor, defaultRequestStrategy) {
+        return connection.connect(isServer = false, interceptors, connectionConfig, acceptor) {
             val setupFrame = SetupFrame(
                 version = Version.Current,
                 honorLease = false,

@@ -25,10 +25,9 @@ internal inline fun Connection.connect(
     interceptors: Interceptors,
     connectionConfig: ConnectionConfig,
     acceptor: ConnectionAcceptor,
-    noinline defaultRequestStrategy: () -> RequestStrategy,
     beforeStart: () -> Unit = {},
 ): RSocketRequester {
-    val state = RSocketState(this, connectionConfig.keepAlive, defaultRequestStrategy)
+    val state = RSocketState(this, connectionConfig.keepAlive)
     val requester = RSocketRequesterImpl(state, StreamId(isServer)).let(interceptors::wrapRequester)
     val connectionContext = ConnectionAcceptorContext(connectionConfig, requester)
     val requestHandler = with(interceptors.wrapAcceptor(acceptor)) { connectionContext.accept() }.let(interceptors::wrapResponder)

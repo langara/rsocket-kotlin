@@ -197,6 +197,7 @@ subprojects {
         extensions.configure<KotlinMultiplatformExtension> {
             val isTestProject = project.name == "rsocket-test"
             val isLibProject = project.name.startsWith("rsocket")
+            val isPlaygroundProject = project.name == "playground"
 
             sourceSets.all {
                 languageSettings.apply {
@@ -206,7 +207,7 @@ subprojects {
 
                     useExperimentalAnnotation("kotlin.RequiresOptIn")
 
-                    if (name.contains("test", ignoreCase = true) || isTestProject) {
+                    if (name.contains("test", ignoreCase = true) || isTestProject || isPlaygroundProject) {
                         useExperimentalAnnotation("kotlin.time.ExperimentalTime")
                         useExperimentalAnnotation("kotlin.ExperimentalStdlibApi")
 
@@ -234,7 +235,7 @@ subprojects {
             }
 
             //fix atomicfu for examples and playground
-            if ("examples" in project.path || project.name == "playground") {
+            if ("examples" in project.path || isPlaygroundProject) {
                 sourceSets["commonMain"].dependencies {
                     implementation("org.jetbrains.kotlinx:atomicfu:$kotlinxAtomicfuVersion")
                 }

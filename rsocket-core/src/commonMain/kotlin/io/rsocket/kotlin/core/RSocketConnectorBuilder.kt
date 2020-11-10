@@ -30,7 +30,6 @@ public class RSocketConnectorBuilder internal constructor() {
     private val interceptors: InterceptorsBuilder = InterceptorsBuilder()
     private var acceptor: ConnectionAcceptor? = null
     private var reconnectPredicate: ReconnectPredicate? = null
-    private var defaultRequestStrategy: () -> RequestStrategy = DefaultStrategy
 
     public fun connectionConfig(configure: ConnectionConfigBuilder.() -> Unit) {
         connectionConfig.configure()
@@ -68,11 +67,6 @@ public class RSocketConnectorBuilder internal constructor() {
         reconnectPredicate = predicate
     }
 
-    @ExperimentalStreamsApi
-    public fun defaultRequestStrategy(block: () -> RequestStrategy) {
-        defaultRequestStrategy = block
-    }
-
     public class ConnectionConfigBuilder internal constructor() {
         public var keepAlive: KeepAlive = KeepAlive()
         public var payloadMimeType: PayloadMimeType = PayloadMimeType()
@@ -104,7 +98,6 @@ public class RSocketConnectorBuilder internal constructor() {
         connectionConfig.producer(),
         acceptor ?: defaultAcceptor,
         reconnectPredicate,
-        defaultRequestStrategy
     )
 
     private companion object {

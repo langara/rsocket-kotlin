@@ -38,9 +38,9 @@ class TestRSocket : RSocketResponder {
         repeat(10000) { emit(requestResponse(payload)) }
     }
 
-    override suspend fun requestChannel(initPayload: Payload, payloads: ReactiveFlow<Payload>): Flow<Payload> = flow {
+    override suspend fun requestChannel(initPayload: Payload, payloads: Flow<Payload>): Flow<Payload> = flow {
         emit(initPayload)
-        payloads.collect { emit(it) }
+        emitAll(payloads)
     }
 
     companion object {

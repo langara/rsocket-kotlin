@@ -16,7 +16,6 @@
 
 import io.rsocket.kotlin.*
 import io.rsocket.kotlin.core.*
-import io.rsocket.kotlin.payload.*
 import io.rsocket.kotlin.transport.local.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -27,14 +26,14 @@ fun main(): Unit = runBlocking {
     RSocketServer().bind(server) {
         RSocketRequestHandler {
             requestChannel { initPayload, request ->
-                request.requestOnly(2).onStart { emit(initPayload) }.flatMapConcat { payload ->
+                request.onStart { emit(initPayload) }.flatMapConcat { payload ->
                     val data = payload.data.readText()
                     flow {
                         repeat(3) {
                             emit(Payload("$data(copy $it)"))
                         }
                     }
-                }
+                }.flowOn(PrefetchStrategy(3, 0))
             }
         }
     }

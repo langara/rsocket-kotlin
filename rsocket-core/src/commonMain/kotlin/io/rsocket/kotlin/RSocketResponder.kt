@@ -45,7 +45,7 @@ public interface RSocketResponder : Cancelable {
 
     // `payloads` can be collected only once
     // result will be collected only once
-    public suspend fun requestChannel(initPayload: Payload, payloads: ReactiveFlow<Payload>): Flow<Payload> {
+    public suspend fun requestChannel(initPayload: Payload, payloads: Flow<Payload>): Flow<Payload> {
         initPayload.release()
         notImplemented("Request Channel")
     }

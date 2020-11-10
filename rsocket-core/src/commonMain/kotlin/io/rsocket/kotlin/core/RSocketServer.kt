@@ -26,7 +26,6 @@ import io.rsocket.kotlin.transport.*
 public class RSocketServer internal constructor(
     private val loggerFactory: LoggerFactory,
     private val interceptors: Interceptors,
-    private val defaultRequestStrategy: () -> RequestStrategy,
 ) {
 
     public fun <T> bind(
@@ -46,7 +45,7 @@ public class RSocketServer internal constructor(
             setupPayload = setupFrame.payload
         )
         try {
-            connect(isServer = true, interceptors, connectionConfig, acceptor, defaultRequestStrategy)
+            connect(isServer = true, interceptors, connectionConfig, acceptor)
         } catch (e: Throwable) {
             failSetup(RSocketError.Setup.Rejected(e.message ?: "Rejected by server acceptor"))
         }

@@ -33,9 +33,9 @@ actual class MessageApi(private val rSocket: RSocketRequester, private val proto
         )
     )
 
-    actual fun messages(chatId: Int, fromMessageId: Int): Flow<Message> = rSocket.requestStream(
+    actual fun messages(chatId: Int, fromMessageId: Int): Flow<Message> = rSocket.requestStream {
         proto.encodeToPayload(route = "messages.stream", StreamMessages(chatId, fromMessageId))
-    ).map {
+    }.map {
         proto.decodeFromPayload(it)
     }
 }

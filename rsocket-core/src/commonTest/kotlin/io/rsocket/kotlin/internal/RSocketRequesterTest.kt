@@ -33,7 +33,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
     override suspend fun before() {
         super.before()
 
-        val state = RSocketState(connection, KeepAlive(1000.seconds, 1000.seconds), DefaultStrategy)
+        val state = RSocketState(connection, KeepAlive(1000.seconds, 1000.seconds))
         requester = RSocketRequesterImpl(state, StreamId.client())
         state.start(RSocketRequestHandler { })
     }
@@ -48,7 +48,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
     @Test
     fun testStreamInitialN() = test {
         connection.test {
-            val flow = requester.requestStream(Payload.Empty).requestByFixed(5)
+            val flow = requester.requestStream { Payload.Empty }.flowOn(PrefetchStrategy(5, 0))
 
             expectNoEventsIn(200)
             flow.launchIn(connection)
@@ -66,7 +66,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
     @Test
     fun testStreamRequestOnly() = test {
         connection.test {
-            val flow = requester.requestStream(Payload.Empty).requestOnly(2)
+            val flow = requester.requestStream { Payload.Empty }.flowOn(PrefetchStrategy(2, 0)).take(2)
 
             expectNoEventsIn(200)
             flow.launchIn(connection)
@@ -94,7 +94,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
     @Test
     fun testStreamRequestByFixed() = test {
         connection.test {
-            val flow = requester.requestStream(Payload.Empty).requestByFixed(2).take(4)
+            val flow = requester.requestStream { Payload.Empty }.flowOn(PrefetchStrategy(2, 0)).take(4)
 
             expectNoEventsIn(200)
             flow.launchIn(connection)
@@ -129,7 +129,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
     @Test
     fun testStreamRequestBy() = test {
         connection.test {
-            val flow = requester.requestStream(Payload.Empty).requestBy(5, 2).take(4)
+            val flow = requester.requestStream { Payload.Empty }.flowOn(PrefetchStrategy(5, 2)).take(6)
 
             expectNoEventsIn(200)
             flow.launchIn(connection)
@@ -137,8 +137,11 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
             expectFrame { frame ->
                 assertTrue(frame is RequestFrame)
                 assertEquals(FrameType.RequestStream, frame.type)
-                assertEquals(2, frame.initialRequest)
+                assertEquals(5, frame.initialRequest)
             }
+
+            expectNoEventsIn(200)
+            connection.sendToReceiver(NextPayloadFrame(1, Payload.Empty))
 
             expectNoEventsIn(200)
             connection.sendToReceiver(NextPayloadFrame(1, Payload.Empty))
@@ -148,8 +151,11 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
 
             expectFrame { frame ->
                 assertTrue(frame is RequestNFrame)
-                assertEquals(2, frame.requestN)
+                assertEquals(5, frame.requestN)
             }
+
+            expectNoEventsIn(200)
+            connection.sendToReceiver(NextPayloadFrame(1, Payload.Empty))
 
             expectNoEventsIn(200)
             connection.sendToReceiver(NextPayloadFrame(1, Payload.Empty))
@@ -274,7 +280,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
             }
         }
 
-        requester.requestChannel(request).requestByFixed(Int.MAX_VALUE).launchIn(connection)
+        requester.requestChannel(request).flowOn(PrefetchStrategy(Int.MAX_VALUE, 0)).launchIn(connection)
         connection.test {
             expectNoEventsIn(200)
             delay.complete()
@@ -305,7 +311,7 @@ class RSocketRequesterTest : TestWithConnection(), TestWithLeakCheck {
     fun rrTerminatedOnConnectionClose() = streamIsTerminatedOnConnectionClose { requester.requestResponse(Payload.Empty) }
 
     @Test
-    fun rsTerminatedOnConnectionClose() = streamIsTerminatedOnConnectionClose { requester.requestStream(Payload.Empty).collect() }
+    fun rsTerminatedOnConnectionClose() = streamIsTerminatedOnConnectionClose { requester.requestStream { Payload.Empty }.collect() }
 
     @Test
     fun rcTerminatedOnConnectionClose() = streamIsTerminatedOnConnectionClose { requester.requestChannel(flowOf(Payload.Empty)).collect() }

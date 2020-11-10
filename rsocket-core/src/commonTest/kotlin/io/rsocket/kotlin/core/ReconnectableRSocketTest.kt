@@ -192,10 +192,10 @@ class ReconnectableRSocketTest : SuspendTest, TestWithLeakCheck {
         }
 
         assertFailsWith(CancellationException::class) {
-            rSocket.requestStream(Payload.Empty).collect()
+            rSocket.requestStream { Payload.Empty }.collect()
         }
 
-        rSocket.requestStream(Payload.Empty).test {
+        rSocket.requestStream { Payload.Empty }.test {
             repeat(5) {
                 assertEquals(Payload.Empty, expectItem())
             }
@@ -234,23 +234,14 @@ private class ProxyRSocket(private val responder: RSocketResponder) : RSocketReq
         return responder.requestResponse(payload)
     }
 
-    override fun requestStream(payload: Payload): ReactiveFlow<Payload> = reactiveFlow {
-        responder.requestStream(payload)
+    override fun requestStream(payload: suspend () -> Payload): Flow<Payload> = flow {
+        emitAll(responder.requestStream(payload()))
     }
 
-    override fun requestStream(payload: suspend () -> Payload): ReactiveFlow<Payload> = reactiveFlow {
-        responder.requestStream(payload())
-    }
-
-    override fun requestChannel(payloads: Flow<Payload>): ReactiveFlow<Payload> = reactiveFlow {
+    override fun requestChannel(payloads: Flow<Payload>): Flow<Payload> = flow {
         val channel = payloads.produceIn(GlobalScope)
-        val requestPayloads = reactiveFlow { channel.consumeAsFlow() }
-        responder.requestChannel(channel.receive(), requestPayloads)
+        val initialPayload = channel.receive()
+        val payloadsFlow = channel.consumeAsFlow()
+        responder.requestChannel(initialPayload, payloadsFlow)
     }
-}
-
-@OptIn(ExperimentalStreamsApi::class)
-private inline fun reactiveFlow(crossinline block: suspend () -> Flow<Payload>): ReactiveFlow<Payload> = object : ReactiveFlow<Payload> {
-    override fun request(strategy: () -> RequestStrategy): ReactiveFlow<Payload> = this
-    override suspend fun collect(collector: FlowCollector<Payload>) = block().collect(collector)
 }

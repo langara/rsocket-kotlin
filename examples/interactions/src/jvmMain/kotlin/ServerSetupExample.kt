@@ -62,7 +62,7 @@ fun main(): Unit = runBlocking {
         val payload = rSocketClient.requestResponse(Payload("2"))
         println("Client 2 receives: ${payload.data.readText()}")
         try {
-            rSocketClient.requestStream(Payload.Empty).collect()
+            rSocketClient.requestStream { Payload.Empty }.collect()
         } catch (e: Throwable) {
             println("Client 2 receives error: ${e.message}")
         }
@@ -75,7 +75,7 @@ fun main(): Unit = runBlocking {
             }
         }.connect(server)
 
-        val payloads = rSocketClient.requestStream(Payload("3")).toList()
+        val payloads = rSocketClient.requestStream { Payload("3") }.toList()
         println("Client 3 receives: ${payloads.map { it.data.readText() }}")
         try {
             rSocketClient.requestResponse(Payload.Empty)

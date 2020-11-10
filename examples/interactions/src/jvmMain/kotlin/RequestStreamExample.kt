@@ -16,7 +16,6 @@
 
 import io.rsocket.kotlin.*
 import io.rsocket.kotlin.core.*
-import io.rsocket.kotlin.payload.*
 import io.rsocket.kotlin.transport.local.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -41,12 +40,12 @@ fun main(): Unit = runBlocking {
     }
     val rSocket = RSocketConnector().connect(server)
 
-    val response = rSocket.requestStream(Payload("Hello", "World"))
+    val response = rSocket.requestStream { Payload("Hello", "World") }
 
     response
-        .requestBy(2) //use buffer as first operator to use RequestN semantic, so request by 2 elements
         .map { it.data.readText().substringAfter("Payload: ").toInt() }
         .take(2)
+        .flowOn(PrefetchStrategy(2, 0))
         .collect {
             println("Client receives index: $it")
         }
