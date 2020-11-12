@@ -56,7 +56,7 @@ internal class RSocketRequesterImpl(
     override fun requestStream(payload: suspend () -> Payload): Flow<Payload> = flow {
         val p = payload()
         p.closeOnError {
-            val strategy = coroutineContext.requestStrategy()
+            val strategy = currentCoroutineContext().requestStrategy()
             val initialRequest = strategy.firstRequest()
             val streamId = createStream()
 
@@ -70,7 +70,7 @@ internal class RSocketRequesterImpl(
 
     @OptIn(ExperimentalStreamsApi::class)
     override fun requestChannel(payloads: Flow<Payload>): Flow<Payload> = flow {
-        val strategy = coroutineContext.requestStrategy()
+        val strategy = currentCoroutineContext().requestStrategy()
         val initialRequest = strategy.firstRequest()
         val streamId = createStream()
         val receiverDeferred = CompletableDeferred<ReceiveChannel<RequestFrame>?>()

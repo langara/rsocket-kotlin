@@ -81,7 +81,7 @@ internal class RSocketResponderImpl(
 
         //TODO single collect
         val request = flow {
-            val strategy = coroutineContext.requestStrategy()
+            val strategy = currentCoroutineContext().requestStrategy()
             val initialRequest = strategy.firstRequest()
             send(RequestNFrame(streamId, initialRequest))
             collectStream(streamId, receiver, strategy, this)
