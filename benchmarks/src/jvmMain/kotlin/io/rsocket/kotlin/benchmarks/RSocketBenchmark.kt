@@ -29,8 +29,7 @@ import java.util.concurrent.locks.*
 @State(Scope.Benchmark)
 abstract class RSocketBenchmark<Payload : Any> {
 
-    @Param("0", "64", "1024", "131072", "1048576", "15728640")
-    var payloadSize: Int = 0
+    var payloadSize: Int = 15728640
 
     @Setup
     abstract fun setup()
@@ -64,23 +63,23 @@ abstract class RSocketBenchmark<Payload : Any> {
     fun requestResponseConcurrent(bh: Blackhole) = concurrent(bh, 1000, ::requestResponse)
 
 
-    @Benchmark
+    //    @Benchmark
     fun requestStreamBlocking(bh: Blackhole) = blocking(bh, ::requestStream)
 
-    @Benchmark
+    //    @Benchmark
     fun requestStreamParallel(bh: Blackhole) = parallel(bh, 10, ::requestStream)
 
-    @Benchmark
+    //    @Benchmark
     fun requestStreamConcurrent(bh: Blackhole) = concurrent(bh, 10, ::requestStream)
 
 
-    @Benchmark
+    //    @Benchmark
     fun requestChannelBlocking(bh: Blackhole) = blocking(bh, ::requestChannel)
 
-    @Benchmark
+    //    @Benchmark
     fun requestChannelParallel(bh: Blackhole) = parallel(bh, 10, ::requestChannel)
 
-    @Benchmark
+    //    @Benchmark
     fun requestChannelConcurrent(bh: Blackhole) = concurrent(bh, 10, ::requestChannel)
 
 

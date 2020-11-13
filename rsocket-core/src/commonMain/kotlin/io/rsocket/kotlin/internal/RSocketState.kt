@@ -35,8 +35,8 @@ internal class RSocketState(
     keepAlive: KeepAlive,
 ) : Cancelable by connection {
     private val prioritizer = Prioritizer()
-    private val requestScope = CoroutineScope(SupervisorJob(job))
-    private val scope = CoroutineScope(job)
+    private val requestScope = CoroutineScope(SupervisorJob(job) + Dispatchers.Unconfined)
+    private val scope = CoroutineScope(job + Dispatchers.Unconfined)
 
     val receivers: IntMap<Channel<RequestFrame>> = IntMap()
     private val senders: IntMap<Job> = IntMap()

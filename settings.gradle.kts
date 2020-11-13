@@ -42,26 +42,26 @@ gradleEnterprise {
 rootProject.name = "rsocket-kotlin"
 
 include("benchmarks")
-include("playground")
+//include("playground")
 
 include("rsocket-core")
-include("rsocket-test")
+//include("rsocket-test")
 
 include("rsocket-transport-local")
 
-include("rsocket-transport-ktor")
-include("rsocket-transport-ktor-client")
-include("rsocket-transport-ktor-server")
-project(":rsocket-transport-ktor-client").projectDir = file("rsocket-transport-ktor/rsocket-transport-ktor-client")
-project(":rsocket-transport-ktor-server").projectDir = file("rsocket-transport-ktor/rsocket-transport-ktor-server")
+//include("rsocket-transport-ktor")
+//include("rsocket-transport-ktor-client")
+//include("rsocket-transport-ktor-server")
+//project(":rsocket-transport-ktor-client").projectDir = file("rsocket-transport-ktor/rsocket-transport-ktor-client")
+//project(":rsocket-transport-ktor-server").projectDir = file("rsocket-transport-ktor/rsocket-transport-ktor-server")
 
 fun includeExample(name: String) {
     include("examples:$name")
 }
 
-includeExample("nodejs-tcp-transport")
-includeExample("interactions")
-includeExample("multiplatform-chat")
+//includeExample("nodejs-tcp-transport")
+//includeExample("interactions")
+//includeExample("multiplatform-chat")
 
 val publishCheckVersion: String? by settings
 if (publishCheckVersion != null) include("publish-check")
